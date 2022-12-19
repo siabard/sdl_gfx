@@ -1,178 +1,10 @@
 use hangul_jaso::*;
 use image::io::Reader as ImageReader;
-use image::DynamicImage;
-use image::GenericImageView;
+use jaso_sdl2::*;
 use sdl2::event::*;
-use sdl2::gfx::primitives;
-use sdl2::gfx::primitives::DrawRenderer;
-use sdl2::pixels::Color;
-use sdl2::rect::{Point, Rect};
-
-use sdl2::render::WindowCanvas;
-
-use sdl2::*;
-
-type HalfFont = [u8; 16];
-type FullFont = [u16; 16];
-
-#[derive(Default)]
-struct AsciiFonts {
-    fonts: Vec<Vec<u32>>,
-}
-
-#[derive(Default)]
-struct KoreanFonts {
-    cho: Vec<Vec<u32>>,
-    mid: Vec<Vec<u32>>,
-    jong: Vec<Vec<u32>>,
-}
-
-pub fn build_jaso_bul(t: &dyn ToString) -> (Jaso, Bul) {
-    let code = utf8_to_ucs2(t).unwrap();
-    let jaso = build_jaso(code).unwrap();
-    let bul = build_bul(&jaso);
-
-    (jaso, bul)
-}
-
-fn image2hex(img: &DynamicImage, x: u32, y: u32, w: u32, h: u32) -> Vec<u32> {
-    let mut rows = vec![];
-    for j in y..(y + h) {
-        let mut cell: u32 = 0;
-        for i in x..(x + w) {
-            let digit: u32 = (w as i32 - i as i32 + x as i32) as u32 - 1;
-
-            let v = if (*img).get_pixel(i, j).0[3] == 0 {
-                0
-            } else {
-                2_u32.pow(digit)
-            };
-            cell += v;
-        }
-        rows.push(cell);
-    }
-
-    rows
-}
-
-fn draw_kor_font(
-    font: &KoreanFonts,
-    canvas: &mut WindowCanvas,
-    x: i32,
-    y: i32,
-    c: &char,
-    fg: &dyn primitives::ToColor,
-    bg: &dyn primitives::ToColor,
-) {
-    let texture_creator = canvas.texture_creator();
-    let mut texture = texture_creator
-        .create_texture_target(sdl2::pixels::PixelFormatEnum::BGRA8888, 16, 16)
-        .unwrap();
-
-    let (jaso, bul) = build_jaso_bul(c);
-
-    let cho_hex = &font.cho[(jaso.cho + bul.cho.unwrap() * 19) as usize];
-    let mid_hex = &font.mid[(jaso.mid + bul.mid.unwrap() * 21) as usize];
-    let jong_hex = match bul.jong {
-        Some(jong) => &font.jong[(jaso.jong + jong * 28) as usize],
-        _ => &font.jong[0],
-    };
-    canvas
-        .with_texture_canvas(&mut texture, |texture_canvas| {
-            texture_canvas.set_blend_mode(render::BlendMode::Blend);
-            texture_canvas.set_draw_color(Color::from(bg.as_rgba()));
-            texture_canvas.clear();
-            for j in 0..16_i16 {
-                let cho = cho_hex[j as usize];
-                let mid = mid_hex[j as usize];
-                let jong = jong_hex[j as usize];
-                for i in 0..16_i16 {
-                    let vc = (cho << i) & 0x8000;
-                    let vm = (mid << i) & 0x8000;
-                    let vj = (jong << i) & 0x8000;
-
-                    if vc > 0 {
-                        texture_canvas.pixel(i, j, fg.as_u32()).unwrap();
-                    }
-                    if vm > 0 {
-                        texture_canvas.pixel(i, j, fg.as_u32()).unwrap();
-                    }
-                    if vj > 0 {
-                        texture_canvas.pixel(i, j, fg.as_u32()).unwrap();
-                    }
-
-                    if vc + vm + vj == 0 {
-                        texture_canvas.pixel(i, j, bg.as_u32()).unwrap();
-                    }
-                }
-            }
-        })
-        .unwrap();
-
-    texture.set_blend_mode(render::BlendMode::Blend);
-    canvas
-        .copy_ex(
-            &texture,
-            Rect::new(0, 0, 16, 16),
-            Rect::new(x, y, 16, 16),
-            0.0,
-            Point::new(0, 0),
-            false,
-            false,
-        )
-        .unwrap();
-}
-
-fn draw_ascii_font(
-    font: &AsciiFonts,
-    canvas: &mut WindowCanvas,
-    x: i32,
-    y: i32,
-    contents: &char,
-    fg: &dyn primitives::ToColor,
-    bg: &dyn primitives::ToColor,
-) {
-    let texture_creator = canvas.texture_creator();
-    let mut texture = texture_creator
-        .create_texture_target(sdl2::pixels::PixelFormatEnum::BGRA8888, 8, 16)
-        .unwrap();
-
-    canvas
-        .with_texture_canvas(&mut texture, |texture_canvas| {
-            texture_canvas.set_blend_mode(render::BlendMode::Blend);
-            texture_canvas.set_draw_color(Color::from(bg.as_rgba()));
-            texture_canvas.clear();
-
-            for j in 0..16_i16 {
-                let row = font.fonts[*contents as usize][j as usize];
-                for i in 0..8_i16 {
-                    let v = (row << i) & 0x80;
-                    if v > 0 {
-                        texture_canvas.pixel(i, j, fg.as_u32()).unwrap();
-                    } else {
-                        texture_canvas.pixel(i, j, bg.as_u32()).unwrap();
-                    }
-                }
-            }
-        })
-        .unwrap();
-
-    texture.set_blend_mode(render::BlendMode::Blend);
-    canvas
-        .copy_ex(
-            &texture,
-            Rect::new(0, 0, 8, 16),
-            Rect::new(x, y, 8, 16),
-            0.0,
-            Point::new(0, 0),
-            false,
-            false,
-        )
-        .unwrap();
-}
 
 fn main() -> Result<(), String> {
-    let context = init().unwrap();
+    let context = sdl2::init().unwrap();
     let video_subsystem = context.video().unwrap();
 
     let window = video_subsystem
@@ -182,7 +14,7 @@ fn main() -> Result<(), String> {
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
-    canvas.set_blend_mode(render::BlendMode::Blend);
+    canvas.set_blend_mode(sdl2::render::BlendMode::Blend);
 
     let mut event_pump = context.event_pump().unwrap();
     let mut eng_font = AsciiFonts::default();
@@ -239,7 +71,7 @@ fn main() -> Result<(), String> {
             }
         }
 
-        canvas.set_draw_color(pixels::Color::RGBA(127, 127, 127, 255));
+        canvas.set_draw_color(sdl2::pixels::Color::RGBA(127, 127, 127, 255));
         canvas.clear();
 
         let text = "This text. 다람쥐쳇바퀴돌리고파힣";
@@ -258,7 +90,7 @@ fn main() -> Result<(), String> {
                         x_target,
                         y_target,
                         &c,
-                        &(255, 0, 0, 255),
+                        &(255, 150, 150, 255),
                         &(0, 0, 0, 0),
                     );
                     x_target += 8;
