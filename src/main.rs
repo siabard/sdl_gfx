@@ -66,7 +66,7 @@ fn draw_kor_font(
 ) {
     let texture_creator = canvas.texture_creator();
     let mut texture = texture_creator
-        .create_texture_target(texture_creator.default_pixel_format(), 16, 16)
+        .create_texture_target(sdl2::pixels::PixelFormatEnum::BGRA8888, 16, 16)
         .unwrap();
 
     let (jaso, bul) = build_jaso_bul(c);
@@ -100,10 +100,15 @@ fn draw_kor_font(
                     if vj > 0 {
                         texture_canvas.pixel(i, j, fg.as_u32()).unwrap();
                     }
+
+                    if vc + vm + vj == 0 {
+                        texture_canvas.pixel(i, j, bg.as_u32()).unwrap();
+                    }
                 }
             }
         })
         .unwrap();
+
     texture.set_blend_mode(render::BlendMode::Blend);
     canvas
         .copy_ex(
@@ -129,7 +134,7 @@ fn draw_ascii_font(
 ) {
     let texture_creator = canvas.texture_creator();
     let mut texture = texture_creator
-        .create_texture_target(texture_creator.default_pixel_format(), 8, 16)
+        .create_texture_target(sdl2::pixels::PixelFormatEnum::BGRA8888, 8, 16)
         .unwrap();
 
     canvas
@@ -144,6 +149,8 @@ fn draw_ascii_font(
                     let v = (row << i) & 0x80;
                     if v > 0 {
                         texture_canvas.pixel(i, j, fg.as_u32()).unwrap();
+                    } else {
+                        texture_canvas.pixel(i, j, bg.as_u32()).unwrap();
                     }
                 }
             }
@@ -168,8 +175,14 @@ fn main() -> Result<(), String> {
     let context = init().unwrap();
     let video_subsystem = context.video().unwrap();
 
-    let window = video_subsystem.window("GFX", 800, 600).build().unwrap();
+    let window = video_subsystem
+        .window("GFX", 800, 600)
+        .opengl()
+        .build()
+        .unwrap();
+
     let mut canvas = window.into_canvas().build().unwrap();
+    canvas.set_blend_mode(render::BlendMode::Blend);
 
     let mut event_pump = context.event_pump().unwrap();
     let mut eng_font = AsciiFonts::default();
@@ -226,7 +239,6 @@ fn main() -> Result<(), String> {
             }
         }
 
-        canvas.set_blend_mode(render::BlendMode::Blend);
         canvas.set_draw_color(pixels::Color::RGBA(127, 127, 127, 255));
         canvas.clear();
 
