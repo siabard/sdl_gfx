@@ -8,6 +8,7 @@ use sdl2::rect::{Point, Rect};
 use sdl2::render::TextureCreator;
 use sdl2::render::WindowCanvas;
 use hangul_jaso::*;
+use sdl2::gfx::primitives;
 
 use sdl2::*;
 
@@ -62,6 +63,8 @@ fn draw_kor_font(
     x: i32,
     y: i32,
     c: &char,
+    fg: &dyn primitives::ToColor,
+    bg: &dyn primitives::ToColor,
 
 ) {
     let texture_creator = canvas.texture_creator();
@@ -83,29 +86,29 @@ fn draw_kor_font(
 
     };
     canvas.with_texture_canvas(&mut texture, |texture_canvas| {
-            texture_canvas.set_draw_color(Color::RGBA(0, 0, 0, 255));
-            texture_canvas.clear();
+	texture_canvas.set_blend_mode(render::BlendMode::Blend);
+	texture_canvas.set_draw_color(Color::from(bg.as_rgba()));
+	texture_canvas.clear();
+        for j in 0..16_i16 {
+            let cho = cho_hex[j as usize];
+	    let mid = mid_hex[j as usize];
+	    let jong = jong_hex[j as usize];
+            for i in 0..16_i16 {
+                let vc = (cho << i) & 0x8000;
+		let vm = (mid << i) & 0x8000;
+		let vj = (jong << i) & 0x8000;
 
-                for j in 0..16_i16 {
-                    let cho = cho_hex[j as usize];
-		    let mid = mid_hex[j as usize];
-		    let jong = jong_hex[j as usize];
-                    for i in 0..16_i16 {
-                        let vc = (cho << i) & 0x8000;
-			let vm = (mid << i) & 0x8000;
-			let vj = (jong << i) & 0x8000;
-
-                        if vc > 0 {
-                            texture_canvas.pixel(i, j, 0xFF00FFFFu32).unwrap();
-                        }
-			if vm > 0 {
-                            texture_canvas.pixel(i, j, 0xFF00FFFFu32).unwrap();
-                        }
-			if vj > 0 {
-                            texture_canvas.pixel(i, j, 0xFF00FFFFu32).unwrap();
-                        }
-                    }
+                if vc > 0 {
+                    texture_canvas.pixel(i, j, fg.as_u32()).unwrap();
                 }
+		if vm > 0 {
+                    texture_canvas.pixel(i, j, fg.as_u32()).unwrap();
+                }
+		if vj > 0 {
+                    texture_canvas.pixel(i, j, fg.as_u32()).unwrap();
+                }
+            }
+        }
 
 
     }).unwrap();
@@ -127,8 +130,8 @@ fn draw_ascii_font(
     x: i32,
     y: i32,
     contents: &char,
-
-
+    fg: &dyn primitives::ToColor,
+    bg: &dyn primitives::ToColor,
 ) {
     let texture_creator = canvas.texture_creator();
     let mut texture = texture_creator
@@ -141,26 +144,24 @@ fn draw_ascii_font(
 
     canvas
         .with_texture_canvas(&mut texture, |texture_canvas| {
-            texture_canvas.set_draw_color(Color::RGBA(0, 0, 0, 255));
-            texture_canvas.clear();
+	    texture_canvas.set_blend_mode(render::BlendMode::Blend);
+	    texture_canvas.set_draw_color(Color::from(bg.as_rgba()));
+	    texture_canvas.clear();
 
-                for j in 0..16_i16 {
-                    let row = font.fonts[*contents as usize][j as usize];
-                    for i in 0..8_i16 {
-                        let v = (row << i) & 0x80;
-
-
-                        if v > 0 {
-                            texture_canvas.pixel(i, j, 0xFF00FFFFu32).unwrap();
-                        }
-                    }
+            for j in 0..16_i16 {
+                let row = font.fonts[*contents as usize][j as usize];
+                for i in 0..8_i16 {
+                    let v = (row << i) & 0x80;
+                    if v > 0 {
+                        texture_canvas.pixel(i, j, fg.as_u32()).unwrap();
+		    }
                 }
+            }
 
 
 
         })
         .unwrap();
-
     canvas.copy_ex(
         &texture,
         Rect::new(0, 0, 8, 16),
@@ -230,10 +231,12 @@ fn main() -> Result<(), String> {
                 _ => {}
             }
         }
-        canvas.set_draw_color(pixels::Color::RGB(0, 0, 0));
+
+	canvas.set_blend_mode(render::BlendMode::Blend);
+        canvas.set_draw_color(pixels::Color::RGB(127, 127, 127));
         canvas.clear();
 
-	let text = "This text. 가나난너녀녁";
+	let text = "This text. 다람쥐쳇바퀴돌리고파";
 	let mut x_target = 100;
 	let y_target = 100;
 
@@ -244,11 +247,11 @@ fn main() -> Result<(), String> {
 
 	    match lang {
 		Languages::Ascii => {
-		    draw_ascii_font(&eng_font, &mut canvas, x_target, y_target, &c);
+		    draw_ascii_font(&eng_font, &mut canvas, x_target, y_target, &c, &(255, 0, 0, 255), &(0, 0, 0, 0));
 		    x_target += 8;
 		},
 		Languages::Hangul => {
-		    draw_kor_font(&kor_font, &mut canvas, x_target, y_target, &c);
+		    draw_kor_font(&kor_font, &mut canvas, x_target, y_target, &c, &(0, 255, 0, 255), &(0, 0, 0, 0));
 		    x_target += 16;
 		},
 
