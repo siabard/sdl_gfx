@@ -1,14 +1,14 @@
 use image::io::Reader as ImageReader;
 use image::DynamicImage;
 use image::GenericImageView;
-use image::Pixel;
 use sdl2::event::*;
 use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::pixels::Color;
 use sdl2::rect::{Point, Rect};
 use sdl2::render::TextureCreator;
 use sdl2::render::WindowCanvas;
-use sdl2::video::Window;
+use hangul_jaso::*;
+
 use sdl2::*;
 
 type HalfFont = [u8; 16];
@@ -18,6 +18,23 @@ type FullFont = [u16; 16];
 struct AsciiFonts {
     fonts: Vec<Vec<u32>>,
 }
+
+#[derive(Default)]
+struct KoreanFonts {
+    cho: Vec<Vec<u32>>,
+    mid: Vec<Vec<u32>>,
+    jong: Vec<Vec<u32>>,
+}
+
+
+pub fn build_jaso_bul(t: &dyn ToString) -> (Jaso, Bul) {
+    let code = utf8_to_ucs2(t).unwrap();
+    let jaso = build_jaso(code).unwrap();
+    let bul = build_bul(&jaso);
+
+    (jaso, bul)
+}
+
 
 fn image2hex(img: &DynamicImage, x: u32, y: u32, w: u32, h: u32) -> Vec<u32> {
     let mut rows = vec![];
@@ -31,7 +48,7 @@ fn image2hex(img: &DynamicImage, x: u32, y: u32, w: u32, h: u32) -> Vec<u32> {
             } else {
                 2_u32.pow(digit)
             };
-            cell = cell + v;
+            cell += v;
         }
         rows.push(cell);
     }
@@ -39,18 +56,90 @@ fn image2hex(img: &DynamicImage, x: u32, y: u32, w: u32, h: u32) -> Vec<u32> {
     rows
 }
 
-fn draw_font(
-    font: &AsciiFonts,
+fn draw_kor_font(
+    font: &KoreanFonts,
     canvas: &mut WindowCanvas,
-    texture_creator: &TextureCreator<sdl2::video::WindowContext>,
     x: i32,
     y: i32,
-    contents: &String,
+    c: &char,
+
 ) {
+    let texture_creator = canvas.texture_creator();
+    let mut texture = texture_creator.create_texture_target(
+	texture_creator.default_pixel_format(),
+	16,
+	16,
+    ).unwrap();
+
+    let (jaso, bul) = build_jaso_bul(c);
+
+    let cho_hex = &font.cho[(jaso.cho + bul.cho.unwrap() * 19) as usize];
+    let mid_hex = &font.mid[(jaso.mid + bul.mid.unwrap() * 21) as usize];
+    let jong_hex = match bul.jong {
+	Some(jong) => {
+	    &font.jong[(jaso.jong + jong * 28) as usize]
+	}
+	_ => &font.jong[0]
+
+    };
+    canvas.with_texture_canvas(&mut texture, |texture_canvas| {
+            texture_canvas.set_draw_color(Color::RGBA(0, 0, 0, 255));
+            texture_canvas.clear();
+
+                for j in 0..16_i16 {
+                    let mut rem_cho = cho_hex[j as usize];
+		    let mut rem_mid = mid_hex[j as usize];
+		    let mut rem_jong = jong_hex[j as usize];
+                    for i in 0..16_i16 {
+                        let exp = (16_i32 - i as i32 - 1) as u32;
+                        let divider = 2_u32.pow(exp);
+                        let vc = rem_cho / divider;
+			let vm = rem_mid / divider;
+			let vj = rem_jong / divider;
+                        rem_cho -= vc * divider;
+			rem_mid -= vm * divider;
+			rem_jong -= vj * divider;
+
+                        if vc > 0 {
+                            texture_canvas.pixel(i, j, 0xFF00FFFFu32).unwrap();
+                        }
+			if vm > 0 {
+                            texture_canvas.pixel(i, j, 0xFF00FFFFu32).unwrap();
+                        }
+			if vj > 0 {
+                            texture_canvas.pixel(i, j, 0xFF00FFFFu32).unwrap();
+                        }
+                    }
+                }
+
+
+    }).unwrap();
+
+    canvas.copy_ex(
+	&texture,
+        Rect::new(0, 0, 16, 16),
+        Rect::new(x, y, 16, 16),
+        0.0,
+        Point::new(0, 0),
+        false,
+        false,
+    ).unwrap();
+}
+
+fn draw_ascii_font(
+    font: &AsciiFonts,
+    canvas: &mut WindowCanvas,
+    x: i32,
+    y: i32,
+    contents: &char,
+
+
+) {
+    let texture_creator = canvas.texture_creator();
     let mut texture = texture_creator
         .create_texture_target(
             texture_creator.default_pixel_format(),
-            8 * contents.len() as u32,
+            8,
             16,
         )
         .unwrap();
@@ -59,37 +148,36 @@ fn draw_font(
         .with_texture_canvas(&mut texture, |texture_canvas| {
             texture_canvas.set_draw_color(Color::RGBA(0, 0, 0, 255));
             texture_canvas.clear();
-            let mut start_pos = 0 as i16;
-            for s in contents.chars() {
+
                 for j in 0..16_i16 {
-                    let row = font.fonts[s as usize][j as usize];
+                    let row = font.fonts[*contents as usize][j as usize];
                     let mut rem = row;
                     for i in 0..8_i16 {
                         let exp = (8_i32 - i as i32 - 1) as u32;
                         let divider = 2_u32.pow(exp);
                         let v = rem / divider;
-                        rem = rem - v * divider;
+                        rem -= v * divider;
 
                         if v > 0 {
-                            texture_canvas.pixel(start_pos + i, j, 0xFF00FFFFu32);
+                            texture_canvas.pixel(i, j, 0xFF00FFFFu32).unwrap();
                         }
                     }
                 }
 
-                start_pos = start_pos + 8;
-            }
+
+
         })
         .unwrap();
 
     canvas.copy_ex(
         &texture,
-        Rect::new(0, 0, 8 * contents.len() as u32, 16),
-        Rect::new(x, y, 8 * contents.len() as u32, 16),
+        Rect::new(0, 0, 8, 16),
+        Rect::new(x, y, 8, 16),
         0.0,
         Point::new(0, 0),
         false,
         false,
-    );
+    ).unwrap();
 }
 
 fn main() -> Result<(), String> {
@@ -98,22 +186,47 @@ fn main() -> Result<(), String> {
 
     let window = video_subsystem.window("GFX", 800, 600).build().unwrap();
     let mut canvas = window.into_canvas().build().unwrap();
-    let texture_creator = canvas.texture_creator();
 
     let mut event_pump = context.event_pump().unwrap();
     let mut eng_font = AsciiFonts::default();
+    let mut kor_font = KoreanFonts::default();
 
-    let img = ImageReader::open("assets/bitmap_fonts/ascii-light.png")
+    let eng_img_font = ImageReader::open("assets/bitmap_fonts/ascii-light.png")
         .unwrap()
         .decode()
         .unwrap();
 
-    // 영문 가로 8글자, 세로 16글자, 각 글자는 8x16
+    let han_img_font = ImageReader::open("assets/bitmap_fonts/hangul-dkby-dinaru-2.png").unwrap().decode().unwrap();
+
+    // 영문 가로 16글자, 세로 8글자, 각 글자는 8x16
     for y in 0..8 {
         for x in 0..16 {
-            let rows = image2hex(&img, x * 8, y * 16, 8, 16);
+            let rows = image2hex(&eng_img_font, x * 8, y * 16, 8, 16);
             eng_font.fonts.push(rows);
         }
+    }
+
+    // 한글 가로 28글자, 세로 16글자(8,4,4), 각 글자는 16x16
+    // 한글 초성 8벌 : 19 : 32*19*8 = 4864
+    for y in 0..8 {
+	for x in 0..19 {
+	    let rows = image2hex(&han_img_font, x * 16, y * 16, 16, 16);
+	    kor_font.cho.push(rows);
+	}
+    }
+    // 한글 중성 4벌 : 21 : 32*21*4 = 2688
+    for y in 8..12 {
+	for x in 0..21 {
+	    let rows = image2hex(&han_img_font, x * 16, y * 16, 16, 16);
+	    kor_font.mid.push(rows);
+	}
+    }
+    // 한글 종성 4벌 : 28 : 32*28*4 = 3584
+    for y in 12..16 {
+	for x in 0..28 {
+	    let rows = image2hex(&han_img_font, x * 16, y * 16, 16, 16);
+	    kor_font.jong.push(rows);
+	}
     }
 
     'running: loop {
@@ -128,14 +241,32 @@ fn main() -> Result<(), String> {
         canvas.set_draw_color(pixels::Color::RGB(0, 0, 0));
         canvas.clear();
 
-        draw_font(
-            &eng_font,
-            &mut canvas,
-            &texture_creator,
-            100,
-            100,
-            &"Hello World 123!@#$@#%#$^W$&".to_string(),
-        );
+	let text = "This text. 가나난너녀녁";
+	let mut x_target = 100;
+	let y_target = 100;
+
+	for c in text.to_string().chars() {
+	    let code = utf8_to_ucs2(&c).unwrap();
+            let lang = ucs2_language(code);
+
+
+	    match lang {
+		Languages::Ascii => {
+		    draw_ascii_font(&eng_font, &mut canvas, x_target, y_target, &c);
+		    x_target += 8;
+		},
+		Languages::Hangul => {
+		    draw_kor_font(&kor_font, &mut canvas, x_target, y_target, &c);
+		    x_target += 16;
+		},
+
+		
+		_ => {}
+	    }
+
+	}
+
+
 
         canvas.present();
 

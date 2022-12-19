@@ -209,6 +209,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "hangul_jaso"
+version = "0.0.1"
+
+[[package]]
 name = "hermit-abi"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -477,6 +481,7 @@ dependencies = [
 name = "sdl_gfx"
 version = "0.1.0"
 dependencies = [
+ "hangul_jaso",
  "image",
  "sdl2",
 ]

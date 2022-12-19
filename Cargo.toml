@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 image = "0.24.5"
+hangul_jaso = {path = "../hangul_jaso"}
 
 [dependencies.sdl2]
 version = "0.35"
