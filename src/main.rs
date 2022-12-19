@@ -230,7 +230,7 @@ fn main() -> Result<(), String> {
         canvas.set_draw_color(pixels::Color::RGBA(127, 127, 127, 255));
         canvas.clear();
 
-        let text = "This text. 다람쥐쳇바퀴돌리고파";
+        let text = "This text. 다람쥐쳇바퀴돌리고파힣";
         let mut x_target = 100;
         let y_target = 100;
 
