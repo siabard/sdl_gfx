@@ -87,18 +87,13 @@ fn draw_kor_font(
             texture_canvas.clear();
 
                 for j in 0..16_i16 {
-                    let mut rem_cho = cho_hex[j as usize];
-		    let mut rem_mid = mid_hex[j as usize];
-		    let mut rem_jong = jong_hex[j as usize];
+                    let cho = cho_hex[j as usize];
+		    let mid = mid_hex[j as usize];
+		    let jong = jong_hex[j as usize];
                     for i in 0..16_i16 {
-                        let exp = (16_i32 - i as i32 - 1) as u32;
-                        let divider = 2_u32.pow(exp);
-                        let vc = rem_cho / divider;
-			let vm = rem_mid / divider;
-			let vj = rem_jong / divider;
-                        rem_cho -= vc * divider;
-			rem_mid -= vm * divider;
-			rem_jong -= vj * divider;
+                        let vc = (cho << i) & 0x8000;
+			let vm = (mid << i) & 0x8000;
+			let vj = (jong << i) & 0x8000;
 
                         if vc > 0 {
                             texture_canvas.pixel(i, j, 0xFF00FFFFu32).unwrap();
@@ -151,12 +146,9 @@ fn draw_ascii_font(
 
                 for j in 0..16_i16 {
                     let row = font.fonts[*contents as usize][j as usize];
-                    let mut rem = row;
                     for i in 0..8_i16 {
-                        let exp = (8_i32 - i as i32 - 1) as u32;
-                        let divider = 2_u32.pow(exp);
-                        let v = rem / divider;
-                        rem -= v * divider;
+                        let v = (row << i) & 0x80;
+
 
                         if v > 0 {
                             texture_canvas.pixel(i, j, 0xFF00FFFFu32).unwrap();
