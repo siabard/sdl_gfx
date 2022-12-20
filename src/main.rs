@@ -2,16 +2,13 @@ use hangul_jaso::*;
 use image::io::Reader as ImageReader;
 use jaso_sdl2::*;
 use sdl2::event::*;
+use sdl_isometric::ascii::AsciiImage;
 
 fn main() -> Result<(), String> {
     let context = sdl2::init().unwrap();
     let video_subsystem = context.video().unwrap();
 
-    let window = video_subsystem
-        .window("GFX", 800, 600)
-        .opengl()
-        .build()
-        .unwrap();
+    let window = video_subsystem.window("GFX", 800, 600).opengl().build().unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
     canvas.set_blend_mode(sdl2::render::BlendMode::Blend);
@@ -20,10 +17,8 @@ fn main() -> Result<(), String> {
     let mut eng_font = AsciiFonts::default();
     let mut kor_font = KoreanFonts::default();
 
-    let eng_img_font = ImageReader::open("assets/bitmap_fonts/ascii-light.png")
-        .unwrap()
-        .decode()
-        .unwrap();
+    let eng_img_font =
+        ImageReader::open("assets/bitmap_fonts/ascii-light.png").unwrap().decode().unwrap();
 
     let han_img_font = ImageReader::open("assets/bitmap_fonts/hangul-dkby-dinaru-2.png")
         .unwrap()
@@ -61,6 +56,10 @@ fn main() -> Result<(), String> {
         }
     }
 
+    // 텍스트 생성해봄..
+    let hacker_img = ImageReader::open("assets/hacker.png").unwrap().decode().unwrap();
+    let hacker_ascii = AsciiImage::new(&hacker_img, 20, 40);
+
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
@@ -76,7 +75,7 @@ fn main() -> Result<(), String> {
 
         let text = "This text. 다람쥐쳇바퀴돌리고파힣";
         let mut x_target = 100;
-        let y_target = 100;
+        let mut y_target = 100;
 
         for c in text.to_string().chars() {
             let code = utf8_to_ucs2(&c).unwrap();
@@ -110,6 +109,53 @@ fn main() -> Result<(), String> {
 
                 _ => {}
             }
+        }
+
+        x_target = 160;
+        y_target = 160;
+
+        for h in 0..hacker_ascii.height {
+            for c in hacker_ascii
+                .ascii_image
+                .get((h * hacker_ascii.width) as usize..((h + 1) * hacker_ascii.width) as usize)
+                .unwrap()
+                .to_string()
+                .chars()
+            {
+                let code = utf8_to_ucs2(&c).unwrap();
+                let lang = ucs2_language(code);
+
+                match lang {
+                    Languages::Ascii => {
+                        draw_ascii_font(
+                            &eng_font,
+                            &mut canvas,
+                            x_target,
+                            y_target,
+                            &c,
+                            &(255, 255, 255, 255),
+                            &(0, 0, 0, 0),
+                        );
+                        x_target += 8;
+                    }
+                    Languages::Hangul => {
+                        draw_kor_font(
+                            &kor_font,
+                            &mut canvas,
+                            x_target,
+                            y_target,
+                            &c,
+                            &(0, 255, 0, 255),
+                            &(0, 0, 0, 0),
+                        );
+                        x_target += 16;
+                    }
+
+                    _ => {}
+                }
+            }
+            x_target = 160;
+            y_target += 16;
         }
 
         canvas.present();
