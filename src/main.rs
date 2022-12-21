@@ -57,8 +57,8 @@ fn main() -> Result<(), String> {
     }
 
     // 텍스트 생성해봄..
-    let hacker_img = ImageReader::open("assets/tie.jpg").unwrap().decode().unwrap();
-    let hacker_ascii = AsciiImage::new(&hacker_img, 10, 20);
+    let hacker_img = ImageReader::open("assets/hacker.png").unwrap().decode().unwrap();
+    let hacker_ascii = AsciiImage::new(&hacker_img, 20, 40);
 
     'running: loop {
         for event in event_pump.poll_iter() {
