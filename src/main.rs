@@ -57,8 +57,8 @@ fn main() -> Result<(), String> {
     }
 
     // 텍스트 생성해봄..
-    let hacker_img = ImageReader::open("assets/hacker.png").unwrap().decode().unwrap();
-    let hacker_ascii = AsciiImage::new(&hacker_img, 20, 40);
+    let hacker_img = ImageReader::open("assets/tie.jpg").unwrap().decode().unwrap();
+    let hacker_ascii = AsciiImage::new(&hacker_img, 10, 20);
 
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -70,7 +70,7 @@ fn main() -> Result<(), String> {
             }
         }
 
-        canvas.set_draw_color(sdl2::pixels::Color::RGBA(127, 127, 127, 255));
+        canvas.set_draw_color(sdl2::pixels::Color::RGBA(0, 0, 0, 0));
         canvas.clear();
 
         let text = "This text. 다람쥐쳇바퀴돌리고파힣";
