@@ -3,6 +3,10 @@ name = "sdl_gfx"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name="map_test"
+path="bin/map_test.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -12,5 +16,5 @@ jaso_sdl2 = {path = "../jaso_sdl2"}
 sdl_isometric = {path = "../sdl_isometric"}
 
 [dependencies.sdl2]
-version = "0.35"
+version = "0.35.2"
 features = ["image", "ttf", "mixer", "gfx"]
