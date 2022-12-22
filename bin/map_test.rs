@@ -229,6 +229,16 @@ fn main() -> Result<(), String> {
                 }
             }
         }
+
+        draw_ascii_font(
+            &eng_font,
+            &mut canvas,
+            (100 + pos_x * 8) as i32,
+            (100 + pos_y * 16) as i32,
+            &'@',
+            &(255, 255, 255, 255),
+            &(0, 0, 0, 0),
+        );
         canvas.present();
 
         ::std::thread::sleep(std::time::Duration::new(0, 1_000_000_000u32 / 60));
