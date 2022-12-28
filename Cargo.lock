@@ -624,7 +624,9 @@ dependencies = [
 name = "sdl_isometric"
 version = "0.1.0"
 dependencies = [
+ "hangul_jaso",
  "image",
+ "jaso_sdl2",
  "lazy_static",
  "num-traits",
  "rand",
